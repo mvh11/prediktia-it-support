@@ -82,15 +82,20 @@ OWNER_REQUIRED: CLAUDE_AGENT / OPENCODE_AGENT / MODULAR_PRINCIPAL
 
 ## 7. Límite de ejecución nube / local
 
-- Las sesiones en la nube (plano de control) pueden: leer, diseñar, documentar
-  y hacer commit **solo en este repositorio**.
+Modelo completo: [`operating-model.md`](operating-model.md)
+(CLOUD_CONTROL_PLANE + LOCAL_BRIDGE, misma identidad).
+
+- CLOUD_CONTROL_PLANE puede: leer, diseñar, documentar y hacer commit **solo en
+  este repositorio**. No se conecta a Neon.
+- LOCAL_BRIDGE ejecuta solo paquetes de `handoffs/local/` cubiertos por
+  autorización del Chief.
 - El contexto de nube no otorga acceso ni autorización de producción.
-- No se colocan credenciales de producción en entornos de sesiones en la nube
-  salvo autorización explícita de CHIEF_ARCHITECT para ese uso concreto.
+- Las credenciales del `.env` local se quedan en local; no se colocan
+  credenciales de producción en sesiones cloud salvo autorización explícita de
+  CHIEF_ARCHITECT para ese uso concreto.
+- Un escritor de TI a la vez en este repositorio.
 - Los PCs de desarrollo no son infraestructura de producción; el emisor no debe
   ejecutarse en uno.
-- Las acciones locales/en estaciones de trabajo se hacen solo cuando se piden
-  explícitamente y bajo las mismas reglas de autoridad.
 
 ## 8. Regla de secretos
 

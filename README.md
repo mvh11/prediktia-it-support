@@ -52,10 +52,15 @@ Reglas completas: [`docs/authority-and-scope.md`](docs/authority-and-scope.md).
 |---------|-----------|
 | `README.md` | Propósito, identidad, modelo de soporte (este archivo) |
 | `docs/authority-and-scope.md` | Reglas de autoridad, escalamiento, límites de aplicación y de ejecución, idioma |
+| `docs/operating-model.md` | Modelo CLOUD_CONTROL_PLANE + LOCAL_BRIDGE, límite de secretos, flujo de handoff, un escritor a la vez |
 | `docs/current-status.md` | Estado del hito actual, restricciones, frentes, verificado/reportado/pendiente, bloqueos |
+| `handoffs/local/` | Paquetes de tarea para LOCAL_BRIDGE |
+| `evidence/` | Resultados saneados de las tareas |
+| `scripts/read-only/` | Scripts de solo lectura validados |
 
-Al iniciar cada sesión, leer `docs/authority-and-scope.md` y
-`docs/current-status.md`. Actualizar `docs/current-status.md` cuando cambie el
+Al iniciar cada sesión, leer `docs/authority-and-scope.md`,
+`docs/operating-model.md` y `docs/current-status.md` (§0 indica el escritor
+activo). Actualizar `docs/current-status.md` cuando cambie el
 estado.
 
 ## Nunca guardar aquí
