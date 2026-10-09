@@ -1,22 +1,22 @@
-# Current status — IT support
+# Estado actual — soporte TI
 
-Last updated: 2026-10-09 (bootstrap session)
+Última actualización: 2026-10-09 (sesión de bootstrap)
 
-Legend:
-- **VERIFIED** — checked directly by IT_SUPPORT_AGENT, with evidence.
-- **REPORTED** — stated by CHIEF_ARCHITECT / a department; not independently
-  verified by IT.
-- **PENDING** — not yet checked or not yet decided.
+Leyenda:
+- **VERIFICADO** — comprobado directamente por IT_SUPPORT_AGENT, con evidencia.
+- **REPORTADO** — informado por CHIEF_ARCHITECT / un departamento; no verificado
+  de forma independiente por TI.
+- **PENDIENTE** — aún no comprobado o aún no decidido.
 
-## 1. Project phase
+## 1. Fase del proyecto
 
-| Item | Value | Status |
-|------|-------|--------|
-| Phase | M5.9C — production-readiness coordination | REPORTED |
-| Canonical development baseline | `1c06ef9c2a78a556cd8c7ded89853c19ec9a856a` | REPORTED |
-| Locally validated Modular candidate | `d31eebc8e923c3d0351ac55086e53e08c2a5f62b` | REPORTED |
+| Elemento | Valor | Estado |
+|----------|-------|--------|
+| Fase | M5.9C — coordinación de preparación para producción | REPORTADO |
+| Baseline canónico de desarrollo | `1c06ef9c2a78a556cd8c7ded89853c19ec9a856a` | REPORTADO |
+| Candidato Modular validado localmente | `d31eebc8e923c3d0351ac55086e53e08c2a5f62b` | REPORTADO |
 
-## 2. Production restrictions (in force)
+## 2. Restricciones de producción (vigentes)
 
 ```
 M5.9D_AUTHORIZED:        NO
@@ -27,61 +27,64 @@ APPLICATION_MIGRATIONS:  HOLD
 MAIN_MERGE:              HOLD
 ```
 
-Status: REPORTED. Any change requires CHIEF_ARCHITECT.
+Estado: REPORTADO. Cualquier cambio requiere a CHIEF_ARCHITECT.
 
-## 3. Active infrastructure workstreams
+## 3. Frentes de infraestructura activos
 
-| # | Workstream | Accepted direction | State |
-|---|-----------|--------------------|-------|
-| 1 | Neon least-privilege read-only access | See §4 | Design; creation **not authorized** |
-| 2 | External scheduler | managed external scheduler → authenticated dispatch → GitHub `workflow_dispatch` → deterministic `tick_id` → Prediktia execution → expected/observed reconciliation | Design; **do not activate** |
-| 3 | Prospective emitter environment | dedicated Linux/cloud env (not dev PC); least privilege; immutable artifact with git commit/digest; external secrets; controlled deploy; restart must **not** trigger catch-up | Design; deployment not authorized |
-| 4 | UTC/time synchronization | authoritative UTC on scheduler and emitter | PENDING |
-| 5 | RFC3161 timestamping | per tick/batch; TSA receives digest only; preserve token + verification evidence | Design |
-| 6 | Independent backup/restore | Neon native recovery is insufficient; independent backup outside Neon/emitter; restore to isolated env first; validate hash-chain + RFC3161 evidence after restore | Design; policy change needs Chief |
-| 7 | Security and credential boundaries | separate reader vs. writer credentials; secrets external; none in repos | Ongoing |
+| # | Frente | Dirección aceptada | Estado |
+|---|--------|--------------------|--------|
+| 1 | Acceso de solo lectura con mínimo privilegio en Neon | Ver §4 | Diseño; creación **no autorizada** |
+| 2 | Scheduler externo | scheduler externo gestionado → dispatch autenticado → GitHub `workflow_dispatch` → `tick_id` determinista → ejecución Prediktia → reconciliación esperado/observado | Diseño; **no activar** |
+| 3 | Entorno del emisor prospectivo | entorno Linux/nube dedicado (no PC de desarrollo); mínimo privilegio; artefacto inmutable con commit git/digest; secretos externos; despliegue controlado; un reinicio **no** debe disparar catch-up | Diseño; despliegue no autorizado |
+| 4 | Sincronización UTC/hora | UTC autoritativo en scheduler y emisor | PENDIENTE |
+| 5 | Sellado de tiempo RFC3161 | por tick/lote; la TSA recibe solo el digest; conservar token + evidencia de verificación | Diseño |
+| 6 | Backup/restauración independiente | la recuperación nativa de Neon no basta; backup independiente fuera de Neon/emisor; restaurar primero en entorno aislado; validar hash-chain + evidencia RFC3161 tras restaurar | Diseño; cambios de política requieren al Chief |
+| 7 | Límites de seguridad y credenciales | credenciales separadas lector vs. escritor; secretos externos; ninguno en repositorios | En curso |
 
-## 4. Neon read-only access — proposed design
+## 4. Acceso de solo lectura en Neon — diseño propuesto
 
 ```
-prediktia_prospective_ro      NOLOGIN   (permission role)
-prediktia_prospective_reader  LOGIN     (member of _ro)
+prediktia_prospective_ro      NOLOGIN   (rol de permisos)
+prediktia_prospective_reader  LOGIN     (miembro de _ro)
 ```
 
-Principles: explicit CONNECT; explicit schema USAGE; explicit object-level
-SELECT; no `pg_read_all_data`; no blanket `SELECT ON ALL TABLES` without Chief
-approval; no broad default privileges; no writes; no DDL; credentials separate
-from application writers; `default_transaction_read_only = on` as
-defense-in-depth.
+Principios: CONNECT explícito; USAGE de esquema explícito; SELECT explícito por
+objeto; sin `pg_read_all_data`; sin `SELECT ON ALL TABLES` general sin
+aprobación del Chief; sin default privileges amplios; sin escrituras; sin DDL;
+credenciales separadas de los escritores de la aplicación;
+`default_transaction_read_only = on` como defensa en profundidad.
 
-Pre-creation verification checklist (all **PENDING**):
+Checklist de verificación previa a la creación (todo **PENDIENTE**):
 
-- [ ] exact target database
-- [ ] schemas in scope
-- [ ] exact objects the reader requires
-- [ ] PUBLIC privileges (database, schemas, functions)
-- [ ] TEMP privilege
-- [ ] existing roles and memberships
-- [ ] object owners
-- [ ] RLS status on target tables
+- [ ] base de datos objetivo exacta
+- [ ] esquemas en alcance
+- [ ] objetos exactos que necesita el lector
+- [ ] privilegios de PUBLIC (base de datos, esquemas, funciones)
+- [ ] privilegio TEMP
+- [ ] roles y membresías existentes
+- [ ] dueños de los objetos
+- [ ] estado de RLS en las tablas objetivo
 - [ ] default privileges (`pg_default_acl`)
 
-## 5. Verified by IT
+## 5. Verificado por TI
 
-- This repository initialized (bootstrap commit). Nothing else verified yet.
+- Repositorio inicializado; commit de bootstrap `4b3f57d` publicado en la rama
+  `claude/it-support-bootstrap-rqariy` (PR mvh11/prediktia-it-support#1,
+  abierta; merge a `main` pendiente de revisión). Nada más verificado aún.
 
-## 6. Current blockers
+## 6. Bloqueos actuales
 
-| Blocker | Needed from |
-|---------|-------------|
-| No read-only access to Neon yet to run the §4 checklist | CHIEF_ARCHITECT (authorize a read-only inspection path) |
-| Required object list for the prospective reader not defined | MODULAR_PRINCIPAL / Data Integrity |
-| Scheduler provider and emitter hosting not selected | CHIEF_ARCHITECT |
-| TSA provider(s) for RFC3161 not selected | CHIEF_ARCHITECT |
-| Independent backup target/location not selected | CHIEF_ARCHITECT |
+| Bloqueo | Se necesita de |
+|---------|----------------|
+| Sin acceso de solo lectura a Neon para ejecutar el checklist de §4 | CHIEF_ARCHITECT (autorizar una vía de inspección de solo lectura) |
+| Lista de objetos que necesita el lector prospectivo no definida | MODULAR_PRINCIPAL / Data Integrity |
+| Proveedor del scheduler y hosting del emisor no seleccionados | CHIEF_ARCHITECT |
+| Proveedor(es) TSA para RFC3161 no seleccionados | CHIEF_ARCHITECT |
+| Destino/ubicación del backup independiente no seleccionado | CHIEF_ARCHITECT |
 
-## 7. Next IT actions (read-only, within standing authority)
+## 7. Próximas acciones de TI (solo lectura, dentro de la autoridad permanente)
 
-1. Prepare read-only audit queries for the §4 checklist (no execution against
-   production until access is authorized).
-2. Draft scheduler, emitter, RFC3161 and backup designs for Chief review.
+1. Preparar las consultas de auditoría de solo lectura para el checklist de §4
+   (sin ejecutarlas contra producción hasta que se autorice el acceso).
+2. Redactar los diseños de scheduler, emisor, RFC3161 y backup para revisión
+   del Chief.
