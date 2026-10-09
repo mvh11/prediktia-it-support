@@ -1,5 +1,12 @@
 # M5.9C — Prerrequisitos del rol `prediktia_prospective_reader` (análisis saneado)
 
+> **SUPERSEDED:** la allowlist de este análisis preliminar (cinco tablas) fue
+> sustituida por la allowlist congelada y confirmada por Modular (seis tablas,
+> incluye `public.seasons`) en
+> [`../docs/prospective-reader-contract.md`](../docs/prospective-reader-contract.md).
+> La clasificación vigente del endpoint está en
+> [`M59C-endpoint-classification.md`](M59C-endpoint-classification.md).
+
 ```
 AGENT_ID: IT_SUPPORT_AGENT
 FASE: M5.9C
