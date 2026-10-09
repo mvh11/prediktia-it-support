@@ -1,0 +1,26 @@
+# Variables de entorno (contienen secretos)
+.env
+.env.*
+!.env.example
+
+# Entorno virtual
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Logs
+*.log
+
+# Editores / sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
