@@ -5,8 +5,9 @@ from pathlib import Path
 
 
 class AgentContextStore:
-    def __init__(self, db_path: str) -> None:
+    def __init__(self, db_path: str, recent_limit_chars: int = 12000) -> None:
         self.db_path = db_path
+        self.recent_limit_chars = recent_limit_chars
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         self._init()
 
@@ -57,5 +58,23 @@ class AgentContextStore:
                     recent_context = excluded.recent_context,
                     updated_at = CURRENT_TIMESTAMP
                 """,
-                (agent_identity, durable_context, recent_context),
+                (
+                    agent_identity,
+                    durable_context,
+                    recent_context[-self.recent_limit_chars :],
+                ),
             )
+
+    def append_recent(self, agent_identity: str, text: str) -> None:
+        durable, recent = self.get(agent_identity)
+        joined = (recent + "\n\n" + text).strip()
+        self.put(agent_identity, durable, joined)
+
+    def render(self, agent_identity: str) -> str:
+        durable, recent = self.get(agent_identity)
+        parts = []
+        if durable.strip():
+            parts.append("DURABLE CONTEXT:\n" + durable.strip())
+        if recent.strip():
+            parts.append("RECENT CONTEXT:\n" + recent.strip())
+        return "\n\n".join(parts)
