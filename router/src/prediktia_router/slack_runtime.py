@@ -11,6 +11,7 @@ from .context_store import AgentContextStore
 from .executor import AgentExecutor, MockExecutor
 from .openai_executor import TieredOpenAIExecutor
 from .service import RouterService
+from .shared_state import SharedStateStore
 from .state import ProcessedMessageStore
 from .usage import UsageStore
 
@@ -51,6 +52,7 @@ def build_app(
         executor=executor or _build_executor(state_db),
         state=ProcessedMessageStore(state_db),
         context_store=AgentContextStore(state_db),
+        shared_state=SharedStateStore(state_db),
     )
 
     @app.event("message")
