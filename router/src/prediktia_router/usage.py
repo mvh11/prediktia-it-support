@@ -66,3 +66,14 @@ class UsageStore:
                 """
             ).fetchone()
         return int(row[0]), int(row[1]), int(row[2]), float(row[3])
+
+    def current_month_cost_usd(self) -> float:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT COALESCE(SUM(estimated_cost_usd), 0)
+                FROM usage_events
+                WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')
+                """
+            ).fetchone()
+        return float(row[0])
