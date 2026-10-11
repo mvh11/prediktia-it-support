@@ -8,6 +8,7 @@ from .criticality import Criticality, classify_criticality
 from .envelope import Envelope, EnvelopeError, parse_envelope
 from .executor import AgentExecutor, ExecutionRequest
 from .routing import Decision, RouterCore
+from .shared_state import SharedStateStore
 from .state import ProcessedMessageStore
 
 
@@ -26,12 +27,14 @@ class RouterService:
         executor: AgentExecutor,
         state: ProcessedMessageStore,
         context_store: AgentContextStore | None = None,
+        shared_state: SharedStateStore | None = None,
         max_hops: int = 8,
     ) -> None:
         self.runtime_identity = runtime_identity
         self.executor = executor
         self.state = state
         self.context_store = context_store
+        self.shared_state = shared_state
         self.core = RouterCore(runtime_identity=runtime_identity, max_hops=max_hops)
 
     def process(
@@ -50,6 +53,9 @@ class RouterService:
         if self.state.seen(slack_event_key, envelope.message_id):
             return ServiceResult("DROP", "duplicate")
 
+        if self.shared_state is not None:
+            self.shared_state.record_message(envelope)
+
         route = self.core.decide(envelope, emitted_by_runtime=emitted_by_runtime)
         if route.decision is Decision.DROP:
             self.state.mark(slack_event_key, envelope.message_id)
@@ -64,16 +70,24 @@ class RouterService:
             self.state.mark(slack_event_key, envelope.message_id)
             return ServiceResult("RECORD_ONLY", criticality.reason)
 
-        stored_context = ""
+        private_context = ""
         if self.context_store is not None:
-            stored_context = self.context_store.render(envelope.to_id)
+            private_context = self.context_store.render(envelope.to_id)
             self.context_store.append_recent(
                 envelope.to_id,
                 "INBOUND:\n" + envelope.render(),
             )
 
+        shared_context = ""
+        if self.shared_state is not None:
+            shared_context = self.shared_state.render_context(
+                agent_identity=envelope.to_id,
+                subject=envelope.subject,
+                reply_to=envelope.reply_to,
+            )
+
         combined_context = "\n\n".join(
-            part for part in (stored_context, context) if part.strip()
+            part for part in (private_context, shared_context, context) if part.strip()
         )
 
         execution = self.executor.execute(
@@ -103,6 +117,9 @@ class RouterService:
                 envelope.to_id,
                 "OUTBOUND:\n" + reply.render(),
             )
+
+        if self.shared_state is not None:
+            self.shared_state.record_message(reply)
 
         self.state.mark(slack_event_key, envelope.message_id)
         return ServiceResult("RESPOND", criticality.reason, reply.render())
