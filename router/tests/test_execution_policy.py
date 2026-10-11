@@ -68,14 +68,18 @@ def test_mock_executor():
     assert result.model == "mock"
 
 
-def test_context_store_persists(tmp_path: Path):
+def test_context_store_persists_and_bounds_recent(tmp_path: Path):
     path = str(tmp_path / "router.sqlite3")
-    store = AgentContextStore(path)
-    store.put("CHIEF_ARCHITECT", "durable", "recent")
-    assert AgentContextStore(path).get("CHIEF_ARCHITECT") == ("durable", "recent")
+    store = AgentContextStore(path, recent_limit_chars=10)
+    store.put("CHIEF_ARCHITECT", "durable", "1234567890")
+    store.append_recent("CHIEF_ARCHITECT", "XYZ")
+    durable, recent = AgentContextStore(path).get("CHIEF_ARCHITECT")
+    assert durable == "durable"
+    assert recent.endswith("XYZ")
+    assert len(recent) <= 10
 
 
-def test_usage_store_totals(tmp_path: Path):
+def test_usage_store_totals_and_month_cost(tmp_path: Path):
     path = str(tmp_path / "router.sqlite3")
     store = UsageStore(path)
     result = MockExecutor("ok").execute(
@@ -88,3 +92,4 @@ def test_usage_store_totals(tmp_path: Path):
     )
     store.record(result)
     assert store.totals() == (0, 0, 0, 0.0)
+    assert store.current_month_cost_usd() == 0.0
