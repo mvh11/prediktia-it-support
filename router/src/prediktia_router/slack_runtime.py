@@ -6,9 +6,11 @@ from collections.abc import Iterable
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-from .executor import MockExecutor
+from .executor import AgentExecutor, MockExecutor
+from .openai_executor import TieredOpenAIExecutor
 from .service import RouterService
 from .state import ProcessedMessageStore
+from .usage import UsageStore
 
 
 def _channel_allowlist(raw: str | None) -> set[str]:
@@ -17,19 +19,32 @@ def _channel_allowlist(raw: str | None) -> set[str]:
     return {item.strip() for item in raw.split(",") if item.strip()}
 
 
+def _build_executor(state_db: str) -> AgentExecutor:
+    mode = os.getenv("ROUTER_EXECUTOR", "mock").strip().lower()
+    if mode == "mock":
+        return MockExecutor(os.getenv("ROUTER_MOCK_RESPONSE", "PREDIKTIA_ROUTER_MOCK_OK"))
+    if mode == "openai":
+        return TieredOpenAIExecutor(
+            economy_model=os.getenv("ROUTER_ECONOMY_MODEL", "gpt-5.6-luna"),
+            strong_model=os.getenv("ROUTER_STRONG_MODEL", "gpt-5.6-sol"),
+            usage_store=UsageStore(state_db),
+        )
+    raise RuntimeError("ROUTER_EXECUTOR must be 'mock' or 'openai'")
+
+
 def build_app(
     *,
     bot_token: str,
     runtime_identity: str,
     state_db: str,
     allowed_channels: Iterable[str],
-    mock_response: str = "PREDIKTIA_ROUTER_MOCK_OK",
+    executor: AgentExecutor | None = None,
 ) -> App:
     app = App(token=bot_token)
     allowed = set(allowed_channels)
     service = RouterService(
         runtime_identity=runtime_identity,
-        executor=MockExecutor(mock_response),
+        executor=executor or _build_executor(state_db),
         state=ProcessedMessageStore(state_db),
     )
 
