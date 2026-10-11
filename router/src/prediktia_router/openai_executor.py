@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import time
 
 from openai import OpenAI
@@ -26,7 +27,13 @@ class TieredOpenAIExecutor:
         self.economy_model = economy_model
         self.strong_model = strong_model
         self.usage_store = usage_store
-        self.client = client or OpenAI()
+        if client is not None:
+            self.client = client
+        else:
+            api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+            if not api_key:
+                raise RuntimeError("OPENAI_API_KEY is required for ROUTER_EXECUTOR=openai")
+            self.client = OpenAI(api_key=api_key)
 
     def _model_for(self, criticality: int) -> str:
         return self.economy_model if criticality <= 1 else self.strong_model
