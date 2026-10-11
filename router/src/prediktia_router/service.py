@@ -67,6 +67,7 @@ class RouterService:
                 subject=envelope.subject,
                 body=envelope.body,
                 context=context,
+                criticality=int(criticality.level),
             )
         )
         self.state.mark(slack_event_key, envelope.message_id)
