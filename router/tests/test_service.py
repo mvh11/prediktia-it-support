@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from prediktia_router.context_store import AgentContextStore
+from prediktia_router.envelope import parse_envelope
 from prediktia_router.executor import MockExecutor
 from prediktia_router.service import RouterService
 from prediktia_router.state import ProcessedMessageStore
@@ -24,18 +26,26 @@ def message(
     )
 
 
-def service(tmp_path: Path) -> RouterService:
+def service(tmp_path: Path, with_context: bool = False) -> RouterService:
+    db = str(tmp_path / "state.sqlite3")
     return RouterService(
         runtime_identity="MODULAR_PRINCIPAL",
         executor=MockExecutor("PREDIKTIA_ROUTER_MOCK_OK"),
-        state=ProcessedMessageStore(str(tmp_path / "state.sqlite3")),
+        state=ProcessedMessageStore(db),
+        context_store=AgentContextStore(db) if with_context else None,
     )
 
 
-def test_task_generates_mock_response(tmp_path: Path):
+def test_task_generates_enveloped_mock_response(tmp_path: Path):
     result = service(tmp_path).process(text=message(), slack_event_key="evt-1")
     assert result.action == "RESPOND"
-    assert result.response_text == "PREDIKTIA_ROUTER_MOCK_OK"
+    reply = parse_envelope(result.response_text or "")
+    assert reply.from_id == "MODULAR_PRINCIPAL"
+    assert reply.to_id == "CHIEF_ARCHITECT"
+    assert reply.type == "STATUS"
+    assert reply.reply_to == "m-1"
+    assert reply.hop_count == 1
+    assert reply.body == "PREDIKTIA_ROUTER_MOCK_OK"
 
 
 def test_duplicate_is_dropped(tmp_path: Path):
@@ -76,3 +86,15 @@ def test_malformed_envelope_fails_closed(tmp_path: Path):
     )
     assert result.action == "DROP"
     assert result.reason.startswith("malformed_envelope:")
+
+
+def test_context_is_persisted_for_agent(tmp_path: Path):
+    router = service(tmp_path, with_context=True)
+    result = router.process(text=message(), slack_event_key="evt-context")
+    assert result.action == "RESPOND"
+    db = str(tmp_path / "state.sqlite3")
+    durable, recent = AgentContextStore(db).get("MODULAR_PRINCIPAL")
+    assert durable == ""
+    assert "INBOUND:" in recent
+    assert "OUTBOUND:" in recent
+    assert "PREDIKTIA_ROUTER_MOCK_OK" in recent
