@@ -4,6 +4,7 @@ from prediktia_router.context_store import AgentContextStore
 from prediktia_router.envelope import parse_envelope
 from prediktia_router.executor import MockExecutor
 from prediktia_router.service import RouterService
+from prediktia_router.shared_state import SharedStateStore
 from prediktia_router.state import ProcessedMessageStore
 
 
@@ -26,13 +27,14 @@ def message(
     )
 
 
-def service(tmp_path: Path, with_context: bool = False) -> RouterService:
+def service(tmp_path: Path, with_context: bool = False, with_shared: bool = False) -> RouterService:
     db = str(tmp_path / "state.sqlite3")
     return RouterService(
         runtime_identity="MODULAR_PRINCIPAL",
         executor=MockExecutor("PREDIKTIA_ROUTER_MOCK_OK"),
         state=ProcessedMessageStore(db),
         context_store=AgentContextStore(db) if with_context else None,
+        shared_state=SharedStateStore(db) if with_shared else None,
     )
 
 
@@ -98,3 +100,16 @@ def test_context_is_persisted_for_agent(tmp_path: Path):
     assert "INBOUND:" in recent
     assert "OUTBOUND:" in recent
     assert "PREDIKTIA_ROUTER_MOCK_OK" in recent
+
+
+def test_shared_state_records_inbound_and_reply(tmp_path: Path):
+    router = service(tmp_path, with_shared=True)
+    result = router.process(text=message(), slack_event_key="evt-shared")
+    assert result.action == "RESPOND"
+    db = str(tmp_path / "state.sqlite3")
+    rendered = SharedStateStore(db).render_context(
+        agent_identity="MODULAR_PRINCIPAL",
+        subject="Physical mock test",
+    )
+    assert "m-1" in rendered
+    assert "PREDIKTIA_ROUTER_MOCK_OK" in rendered
