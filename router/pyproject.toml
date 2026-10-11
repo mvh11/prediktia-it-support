@@ -1,0 +1,17 @@
+[project]
+name = "prediktia-agent-router"
+version = "0.1.0"
+description = "Minimal Slack event router for PREDIKTIA department agents"
+requires-python = ">=3.12"
+dependencies = [
+  "slack-bolt>=1.21,<2",
+  "openai>=1.60,<2",
+  "pydantic>=2.10,<3",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.3,<9"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
