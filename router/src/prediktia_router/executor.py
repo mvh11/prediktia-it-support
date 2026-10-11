@@ -11,6 +11,7 @@ class ExecutionRequest:
     subject: str
     body: str
     context: str = ""
+    criticality: int = 1
 
 
 @dataclass(frozen=True)
