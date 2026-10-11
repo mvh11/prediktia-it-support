@@ -3,9 +3,11 @@ from __future__ import annotations
 import os
 from collections.abc import Iterable
 
+from openai import OpenAIError
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
+from .context_store import AgentContextStore
 from .executor import AgentExecutor, MockExecutor
 from .openai_executor import TieredOpenAIExecutor
 from .service import RouterService
@@ -39,13 +41,16 @@ def build_app(
     state_db: str,
     allowed_channels: Iterable[str],
     executor: AgentExecutor | None = None,
+    monthly_budget_usd: float | None = None,
 ) -> App:
     app = App(token=bot_token)
     allowed = set(allowed_channels)
+    usage = UsageStore(state_db)
     service = RouterService(
         runtime_identity=runtime_identity,
         executor=executor or _build_executor(state_db),
         state=ProcessedMessageStore(state_db),
+        context_store=AgentContextStore(state_db),
     )
 
     @app.event("message")
@@ -64,11 +69,28 @@ def build_app(
             return
 
         emitted_by_runtime = bool(event.get("bot_id"))
-        result = service.process(
-            text=text,
-            slack_event_key=event_key,
-            emitted_by_runtime=emitted_by_runtime,
-        )
+
+        if (
+            monthly_budget_usd is not None
+            and monthly_budget_usd >= 0
+            and usage.current_month_cost_usd() >= monthly_budget_usd
+        ):
+            logger.error("Monthly OpenAI budget reached; dropping executable request")
+            return
+
+        try:
+            result = service.process(
+                text=text,
+                slack_event_key=event_key,
+                emitted_by_runtime=emitted_by_runtime,
+            )
+        except OpenAIError as exc:
+            logger.error("OpenAI request failed: %s", type(exc).__name__)
+            return
+        except Exception:
+            logger.exception("Router listener failed safely")
+            return
+
         if result.action == "RESPOND" and result.response_text:
             say(result.response_text)
 
@@ -81,6 +103,8 @@ def run_socket_mode() -> None:
     runtime_identity = os.environ["ROUTER_RUNTIME_IDENTITY"]
     state_db = os.getenv("ROUTER_STATE_DB", "./state/router.sqlite3")
     allowed_channels = _channel_allowlist(os.getenv("ROUTER_ALLOWED_CHANNELS"))
+    budget_raw = os.getenv("ROUTER_MONTHLY_BUDGET_USD")
+    monthly_budget_usd = float(budget_raw) if budget_raw else None
 
     if not allowed_channels:
         raise RuntimeError("ROUTER_ALLOWED_CHANNELS must contain at least one channel id")
@@ -90,6 +114,7 @@ def run_socket_mode() -> None:
         runtime_identity=runtime_identity,
         state_db=state_db,
         allowed_channels=allowed_channels,
+        monthly_budget_usd=monthly_budget_usd,
     )
     SocketModeHandler(app, app_token).start()
 
